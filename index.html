@@ -79,6 +79,22 @@ nav .pill{padding:2px 18px;border-radius:16px}
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px;margin-right:6px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .hidden{display:none!important}
+.helplink{border:0;background:transparent;color:var(--blue);font-size:13px;font-weight:500;padding:8px 4px 0;cursor:pointer}
+/* uitleg */
+.help h2{margin:0 0 4px;font-size:20px;font-weight:500}
+.help p{margin:0 0 12px;color:var(--muted);font-size:14px;line-height:1.45}
+.help h3{font-size:15px;font-weight:500;margin:18px 0 8px}
+.howto{display:grid;gap:10px}
+.howto .opt{border:1px solid var(--line);border-radius:var(--radius);padding:12px}
+.howto .opt b{display:block;font-weight:500;margin-bottom:2px}
+.howto .opt span{color:var(--muted);font-size:13px}
+.examples{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.ex{border:0;background:var(--blue-soft);color:var(--blue);border-radius:16px;padding:6px 12px;font-size:13px;font-weight:500;font-family:"Roboto Mono",monospace;cursor:pointer}
+.cardcorner{background:#f1f3f4;border-radius:10px;padding:14px;display:flex;align-items:center;gap:8px;font-size:14px;margin:6px 0 4px}
+.cardcorner .g{border:1.5px solid #202124;border-radius:4px;padding:0 4px;font-weight:700;font-size:12px}
+.cardcorner .code{background:#202124;color:#fff;border-radius:4px;padding:1px 6px;font-weight:700;font-size:13px;outline:3px solid var(--star);outline-offset:2px}
+.cardcorner .num{font-weight:700;font-style:italic;outline:3px solid var(--star);outline-offset:3px;border-radius:2px}
+.cardcorner small{color:var(--muted);font-size:11px}
 </style>
 </head>
 <body>
@@ -86,21 +102,21 @@ nav .pill{padding:2px 18px;border-radius:16px}
 <header>
   <h1>Kaart<span>waarde</span></h1>
   <form class="searchbar" id="searchForm" autocomplete="off">
-    <input id="q" type="search" placeholder="Naam of nummer, bijv. Pikachu 25/165" enterkeyhint="search">
-    <button type="button" class="iconbtn" id="camBtn" aria-label="Foto maken">
-      <svg viewBox="0 0 24 24"><path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4zM9 2 7.17 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3.17L15 2H9zm3 15a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></svg>
+    <input id="q" type="search" placeholder="Bijv. SSP 133 of Pikachu" enterkeyhint="search" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <button type="button" class="iconbtn" id="helpBtn" aria-label="Hoe zoek ik?">
+      <svg viewBox="0 0 24 24"><path d="M11 18h2v-2h-2v2zm1-16a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm0-14a4 4 0 0 0-4 4h2a2 2 0 1 1 4 0c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5a4 4 0 0 0-4-4z"/></svg>
     </button>
     <button type="submit" class="iconbtn primary" aria-label="Zoeken">
       <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
     </button>
   </form>
-  <input id="camInput" type="file" accept="image/*" capture="environment" class="hidden">
+  <button type="button" class="helplink" id="helpLink">Hoe zoek ik?</button>
 </header>
 
 <main>
   <!-- Zoeken -->
   <section id="tab-search">
-    <div class="status" id="searchStatus">Zoek op naam, of maak een foto van de kaart.</div>
+    <div class="status" id="searchStatus">Zoek op setcode + nummer (bijv. SSP 133) of op naam.</div>
     <div class="grid" id="results"></div>
   </section>
 
@@ -231,7 +247,43 @@ function buildQuery(text){
   return parts.join(" ");
 }
 
+/* Setcode (bijv. SSP) -> set-id's (bijv. sv8). Wordt onthouden. */
+const setCodeCache = {};
+async function setIdsForCode(code){
+  code = code.toUpperCase();
+  if (setCodeCache[code]) return setCodeCache[code];
+  const url = "https://api.pokemontcg.io/v2/sets?" + new URLSearchParams({ q: "ptcgoCode:" + code, select: "id" });
+  let ids = [];
+  for (let i = 0; i < 3; i++) {
+    try {
+      const res = await fetch(url, { headers: PTCG_API_KEY ? {"X-Api-Key": PTCG_API_KEY} : {} });
+      if (res.ok) { ids = (await res.json()).data.map(s => s.id); break; }
+      if (res.status < 500) break;
+    } catch {}
+    await sleep(1200 * (i + 1));
+  }
+  return (setCodeCache[code] = ids);
+}
+
+/* "SSP 133", "ssp133", "SSP 133/191", "PAF 231" */
+function parseSetCode(text){
+  const m = text.trim().match(/^([A-Za-z]{2,4})\s*#?\s*(\d{1,3})(?:\s*\/\s*\d{1,3})?$/);
+  return m ? { code: m[1], number: String(parseInt(m[2], 10)) } : null;
+}
+
 async function searchCards(text){
+  // 1. Setcode + nummer: precies één kaart
+  const sc = parseSetCode(text);
+  if (sc) {
+    const ids = await setIdsForCode(sc.code);
+    if (ids.length) {
+      const setPart = ids.length === 1 ? `set.id:${ids[0]}` : "(" + ids.map(id => `set.id:${id}`).join(" OR ") + ")";
+      const data = await apiGet({ q: `${setPart} number:${sc.number}`, pageSize: 10 });
+      if (data.data.length) return data.data.map(toCard);
+    }
+    // geen setcode gevonden (bijv. "Mew 151"): val terug op naam + nummer
+  }
+  // 2. Naam (eventueel met nummer)
   const q = buildQuery(text);
   if (!q) return [];
   let data;
@@ -386,7 +438,7 @@ async function doSearch(text){
   st.className = "status"; st.innerHTML = '<span class="spinner"></span>Zoeken…';
   try {
     lastResults = await searchCards(text);
-    st.textContent = lastResults.length ? `${lastResults.length} kaart${lastResults.length === 1 ? "" : "en"} gevonden. Tik op een kaart om hem op te slaan.` : "Niets gevonden. Probeer alleen de naam, of naam + nummer (bijv. Pikachu 25/165).";
+    st.textContent = lastResults.length ? `${lastResults.length} kaart${lastResults.length === 1 ? "" : "en"} gevonden. Tik op een kaart om hem op te slaan.` : "Niets gevonden. Tik op \"Hoe zoek ik?\" voor voorbeelden.";
     renderResults();
   } catch (e) {
     st.className = "status err";
@@ -402,71 +454,39 @@ $("#searchForm").onsubmit = e => {
 };
 $("#q").addEventListener("input", () => { if (currentTab === "saved") renderSaved(); });
 
-/* ---------- camera + OCR ---------- */
-let tesseractReady = null;
-$("#camBtn").onclick = () => $("#camInput").click();
-$("#camInput").onchange = async e => {
-  const file = e.target.files[0]; e.target.value = "";
-  if (!file) return;
-  switchTab("search");
-  const st = $("#searchStatus");
-  st.className = "status"; st.innerHTML = '<span class="spinner"></span>Foto lezen…';
-  try {
-    tesseractReady ??= loadScript("https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js");
-    await tesseractReady;
-    const img = await prepImage(file);
-    const { data } = await Tesseract.recognize(img, "eng");
-    await searchFromOcr(data.text || "");
-  } catch (err) {
-    st.className = "status err"; st.textContent = "Foto lezen mislukt. Probeer opnieuw met meer licht, of typ de naam.";
-  }
-};
-/* verklein + grijswaarden + contrast: beter voor OCR */
-async function prepImage(file){
-  const bmp = await createImageBitmap(file);
-  const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
-  const cv = document.createElement("canvas");
-  cv.width = Math.round(bmp.width * scale); cv.height = Math.round(bmp.height * scale);
-  const ctx = cv.getContext("2d"); ctx.drawImage(bmp, 0, 0, cv.width, cv.height);
-  const id = ctx.getImageData(0, 0, cv.width, cv.height), d = id.data;
-  for (let i = 0; i < d.length; i += 4) {
-    let g = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
-    g = Math.max(0, Math.min(255, (g - 128) * 1.4 + 128));
-    d[i] = d[i+1] = d[i+2] = g;
-  }
-  ctx.putImageData(id, 0, 0);
-  return cv;
-}
-async function searchFromOcr(text){
-  const st = $("#searchStatus");
-  const clean = text.replace(/[|]/g, "/");
-  const m = clean.match(/([A-Z]{0,2}\d{1,3})\s*\/\s*([A-Z]{0,2}\d{1,3})/i);
-  // naamkandidaten: woorden van 3+ letters uit de bovenste regels
-  const lines = clean.split("\n").map(l => l.trim()).filter(Boolean);
-  const words = lines.slice(0, 6).join(" ").match(/[A-Za-zé]{3,}/g) || [];
-  const skip = new Set(["basic","stage","evolves","from","pokemon","pokémon","trainer","item","supporter","energy","ability","weakness","resistance","retreat"]);
-  const nameWords = words.filter(w => !skip.has(w.toLowerCase()));
+/* ---------- uitleg: hoe zoek ik? ---------- */
+function showHelp(){
+  $("#detail").innerHTML = `<div class="help">
+    <h2>Hoe zoek ik?</h2>
+    <p>Typ in de zoekbalk en tik op het vergrootglas.</p>
 
-  if (m) {
-    const numQ = `${m[1]}/${m[2]}`;
-    $("#q").value = numQ;
-    await doSearch(numQ);
-    // meerdere treffers? Filter op naam uit de foto
-    if (lastResults.length > 1 && nameWords.length) {
-      const hit = lastResults.filter(c => nameWords.some(w => c.name.toLowerCase().includes(w.toLowerCase())));
-      if (hit.length) { lastResults = hit; renderResults(); }
-    }
-    if (lastResults.length === 1) { st.textContent = `Gevonden via kaartnummer ${numQ}.`; return openDetail(lastResults[0].id); }
-    if (lastResults.length) return;
-  }
-  for (const w of nameWords.slice(0, 3)) {
-    $("#q").value = w;
-    await doSearch(w);
-    if (lastResults.length) { st.textContent = `Gezocht op "${w}" uit de foto. Kies de juiste kaart, of zoek op naam + nummer.`; return; }
-  }
-  st.className = "status err";
-  st.textContent = "Kaart niet herkend. Fotografeer de hele kaart recht van boven, of typ naam + nummer (linksonder op de kaart).";
+    <h3>Snelst: setcode + nummer</h3>
+    <p>Kijk linksonder op de kaart. Daar staan een code van 3 letters en een nummer:</p>
+    <div class="cardcorner"><span class="g">H</span><span class="code">SSP</span><small>EN</small><span class="num">133/191</span> ★★</div>
+    <p>Typ de code en het eerste getal: <b>SSP 133</b>. Je krijgt dan precies die ene kaart.</p>
+
+    <h3>Andere manieren</h3>
+    <div class="howto">
+      <div class="opt"><b>Naam</b><span>Alle kaarten met die naam, nieuwste eerst.</span>
+        <div class="examples"><button class="ex">Pikachu</button><button class="ex">Charizard ex</button></div></div>
+      <div class="opt"><b>Naam + nummer</b><span>Als je de setcode niet kunt lezen.</span>
+        <div class="examples"><button class="ex">Kecleon 213</button><button class="ex">Snover 100/091</button></div></div>
+      <div class="opt"><b>Setcode + nummer</b><span>De snelste en meest precieze manier.</span>
+        <div class="examples"><button class="ex">SSP 133</button><button class="ex">SFA 15</button><button class="ex">PAF 231</button></div></div>
+    </div>
+
+    <h3>In "Opgeslagen"</h3>
+    <p>Daar zoekt de balk in je eigen kaarten, op naam of setnaam. Met de knoppen filter je op favorieten ★ en op waarde (min/max €).</p>
+    <p>Oude kaarten zonder setcode? Zoek dan op naam + nummer.</p>
+  </div>`;
+  $("#detail").querySelectorAll(".ex").forEach(b => b.onclick = () => {
+    closeSheet(); switchTab("search"); $("#q").value = b.textContent; doSearch(b.textContent);
+  });
+  $("#sheetBg").style.display = "block";
+  requestAnimationFrame(() => $("#sheet").classList.add("open"));
 }
+$("#helpBtn").onclick = showHelp;
+$("#helpLink").onclick = showHelp;
 
 /* ---------- tabs, filters, events ---------- */
 function switchTab(tab){
@@ -474,7 +494,7 @@ function switchTab(tab){
   document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
   $("#tab-search").classList.toggle("hidden", tab !== "search");
   $("#tab-saved").classList.toggle("hidden", tab !== "saved");
-  $("#q").placeholder = tab === "search" ? "Naam of nummer, bijv. Pikachu 25/165" : "Zoek in opgeslagen kaarten of sets";
+  $("#q").placeholder = tab === "search" ? "Bijv. SSP 133 of Pikachu" : "Zoek in opgeslagen kaarten of sets";
   $("#q").value = "";
   rerender();
   window.scrollTo(0, 0);
