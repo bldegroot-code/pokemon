@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Kaartwaarde</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f8f9fa; --surface:#fff; --text:#202124; --muted:#5f6368; --line:#dadce0;
+  --blue:#1a73e8; --blue-soft:#e8f0fe; --star:#fbbc04; --red:#d93025; --green:#188038;
+  --radius:12px; --shadow:0 1px 2px rgba(60,64,67,.3),0 1px 3px 1px rgba(60,64,67,.15);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:Roboto,Arial,sans-serif;font-size:16px}
+button,input,select{font:inherit;color:inherit}
+header{position:sticky;top:0;z-index:10;background:var(--surface);border-bottom:1px solid var(--line);padding:12px 16px calc(12px) 16px;padding-top:calc(12px + env(safe-area-inset-top))}
+h1{margin:0 0 10px;font-size:20px;font-weight:500}
+h1 span{color:var(--blue)}
+.searchbar{display:flex;gap:8px;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:24px;padding:4px 4px 4px 16px}
+.searchbar:focus-within{border-color:var(--blue);background:#fff;box-shadow:var(--shadow)}
+.searchbar input{flex:1;border:0;background:transparent;outline:0;min-width:0;padding:8px 0}
+.iconbtn{border:0;background:transparent;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:var(--muted);flex:none}
+.iconbtn:active{background:var(--blue-soft)}
+.iconbtn svg{width:22px;height:22px;fill:currentColor}
+.iconbtn.primary{background:var(--blue);color:#fff}
+main{padding:12px 16px calc(84px + env(safe-area-inset-bottom))}
+.status{color:var(--muted);font-size:14px;margin:4px 0 12px;min-height:18px}
+.status.err{color:var(--red)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;cursor:pointer;display:flex;flex-direction:column;position:relative}
+.card img{width:100%;aspect-ratio:63/88;object-fit:cover;background:#eee;display:block}
+.card .meta{padding:8px 10px 10px}
+.card .name{font-weight:500;font-size:14px;line-height:1.25}
+.card .sub{color:var(--muted);font-size:12px;margin-top:2px}
+.card .price{margin-top:6px;font-weight:700;font-size:15px}
+.card .price small{font-weight:400;color:var(--muted);font-size:12px;margin-left:4px}
+.card .fav{position:absolute;top:6px;right:6px;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.92);border:0;display:grid;place-items:center;box-shadow:var(--shadow)}
+.card .fav svg{width:20px;height:20px;fill:var(--muted)}
+.card .fav.on svg{fill:var(--star)}
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px;font-size:14px;display:flex;align-items:center;gap:6px;cursor:pointer}
+.chip.on{background:var(--blue-soft);border-color:var(--blue-soft);color:var(--blue);font-weight:500}
+.chip input{width:64px;border:0;outline:0;background:transparent;padding:0}
+.chip select{border:0;background:transparent;outline:0}
+.summary{font-size:14px;color:var(--muted);margin-bottom:12px}
+.summary b{color:var(--text)}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:10}
+nav button{flex:1;border:0;background:transparent;padding:10px 0 8px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;color:var(--muted);cursor:pointer}
+nav button svg{width:24px;height:24px;fill:currentColor}
+nav button.on{color:var(--blue);font-weight:500}
+nav button.on .pill{background:var(--blue-soft)}
+nav .pill{padding:2px 18px;border-radius:16px}
+.empty{text-align:center;color:var(--muted);padding:48px 16px;font-size:14px}
+/* detail sheet */
+.sheet-bg{position:fixed;inset:0;background:rgba(32,33,36,.5);z-index:20;display:none}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-height:92vh;overflow:auto;background:var(--surface);border-radius:16px 16px 0 0;z-index:21;padding:8px 16px calc(20px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .25s ease}
+.sheet.open{transform:translateY(0)}
+.sheet .handle{width:36px;height:4px;border-radius:2px;background:var(--line);margin:4px auto 12px}
+.detail-img{width:min(70%,280px);display:block;margin:0 auto 14px;border-radius:10px;box-shadow:var(--shadow)}
+.detail h2{margin:0;font-size:20px;font-weight:500}
+.detail .set{color:var(--muted);margin:4px 0 14px;font-size:14px}
+.prices{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.pbox{border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px}
+.pbox .lbl{font-size:12px;color:var(--muted)}
+.pbox .val{font-size:22px;font-weight:700;margin:2px 0}
+.pbox .upd{font-size:11px;color:var(--muted)}
+.pbox a{font-size:12px;color:var(--blue);text-decoration:none}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:20px;padding:9px 16px;font-size:14px;font-weight:500;color:var(--blue);display:flex;align-items:center;gap:6px;cursor:pointer}
+.btn svg{width:18px;height:18px;fill:currentColor}
+.btn.fill{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.danger{color:var(--red)}
+.btn.star-on{color:#b06000;background:#fef7e0;border-color:#fef7e0}
+.note{font-size:12px;color:var(--muted);margin-top:12px}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Kaart<span>waarde</span></h1>
+  <form class="searchbar" id="searchForm" autocomplete="off">
+    <input id="q" type="search" placeholder="Naam of nummer, bijv. Pikachu 25/165" enterkeyhint="search">
+    <button type="button" class="iconbtn" id="camBtn" aria-label="Foto maken">
+      <svg viewBox="0 0 24 24"><path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4zM9 2 7.17 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3.17L15 2H9zm3 15a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></svg>
+    </button>
+    <button type="submit" class="iconbtn primary" aria-label="Zoeken">
+      <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+    </button>
+  </form>
+  <input id="camInput" type="file" accept="image/*" capture="environment" class="hidden">
+</header>
+
+<main>
+  <!-- Zoeken -->
+  <section id="tab-search">
+    <div class="status" id="searchStatus">Zoek op naam, of maak een foto van de kaart.</div>
+    <div class="grid" id="results"></div>
+  </section>
+
+  <!-- Opgeslagen -->
+  <section id="tab-saved" class="hidden">
+    <div class="filters">
+      <button class="chip" id="favChip">
+        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+        Favorieten
+      </button>
+      <label class="chip">min € <input id="minVal" type="number" inputmode="decimal" min="0" step="0.5"></label>
+      <label class="chip">max € <input id="maxVal" type="number" inputmode="decimal" min="0" step="0.5"></label>
+      <label class="chip">
+        <select id="sortSel">
+          <option value="valDesc">Waarde ↓</option>
+          <option value="valAsc">Waarde ↑</option>
+          <option value="name">Naam A–Z</option>
+          <option value="set">Set</option>
+          <option value="recent">Laatst toegevoegd</option>
+        </select>
+      </label>
+      <button class="chip" id="refreshAll">↻ Alles vernieuwen</button>
+    </div>
+    <div class="summary" id="summary"></div>
+    <div class="grid" id="saved"></div>
+  </section>
+</main>
+
+<nav>
+  <button class="on" data-tab="search"><span class="pill"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></span>Zoeken</button>
+  <button data-tab="saved"><span class="pill"><svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/></svg></span>Opgeslagen</button>
+</nav>
+
+<div class="sheet-bg" id="sheetBg"></div>
+<div class="sheet" id="sheet"><div class="handle"></div><div class="detail" id="detail"></div></div>
+
+<script>
+/* =========================================================
+   INSTELLINGEN
+   1. Firebase: vul je config in om op te slaan in Firestore.
+      Laat leeg ({}) om alleen lokaal op deze telefoon op te slaan.
+   2. API-sleutel pokemontcg.io (optioneel, gratis via dev.pokemontcg.io):
+      zonder sleutel geldt een lagere limiet.
+   ========================================================= */
+const FIREBASE_CONFIG = {
+  // apiKey: "...",
+  // authDomain: "...",
+  // projectId: "...",
+  // appId: "..."
+};
+const FIRESTORE_COLLECTION = "pokemonCards";
+const PTCG_API_KEY = "";
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const eur = v => v == null ? "–" : "€ " + v.toLocaleString("nl-NL",{minimumFractionDigits:2,maximumFractionDigits:2});
+const usd = v => v == null ? "–" : "$ " + v.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtDate = s => { if(!s) return "onbekend"; const d = new Date(s.replace(/\//g,"-")); return isNaN(d) ? s : d.toLocaleDateString("nl-NL",{day:"numeric",month:"short",year:"numeric"}); };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const STAR = '<svg viewBox="0 0 24 24"><path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>';
+
+/* ---------- pokemontcg.io ---------- */
+const API = "https://api.pokemontcg.io/v2/cards";
+async function apiGet(params){
+  const url = API + "?" + new URLSearchParams(params);
+  const res = await fetch(url, { headers: PTCG_API_KEY ? {"X-Api-Key": PTCG_API_KEY} : {} });
+  if(!res.ok) throw new Error("API-fout " + res.status);
+  return res.json();
+}
+
+/* Zet een API-kaart om naar ons eigen, compacte formaat */
+function toCard(c){
+  const cm = c.cardmarket?.prices || {};
+  const eurVal = cm.trendPrice || cm.averageSellPrice || cm.avg30 || null;
+  let usdVal = null, usdVariant = null;
+  const tp = c.tcgplayer?.prices || {};
+  for (const k of ["normal","holofoil","reverseHolofoil","1stEditionHolofoil","1stEditionNormal","unlimitedHolofoil"]) {
+    const p = tp[k]; const v = p && (p.market ?? p.mid);
+    if (v) { usdVal = v; usdVariant = k; break; }
+  }
+  return {
+    id: c.id,
+    name: c.name,
+    number: c.number,
+    printedTotal: c.set?.printedTotal,
+    setName: c.set?.name,
+    setId: c.set?.id,
+    releaseDate: c.set?.releaseDate,
+    rarity: c.rarity || "",
+    imgSmall: c.images?.small,
+    imgLarge: c.images?.large,
+    eur: eurVal, eurUpdated: c.cardmarket?.updatedAt || null, cmUrl: c.cardmarket?.url || null,
+    usd: usdVal, usdVariant, usdUpdated: c.tcgplayer?.updatedAt || null, tcgUrl: c.tcgplayer?.url || null
+  };
+}
+
+/* Tekst -> zoekquery. Herkent "naam 25/165", "25/165", "TG05" */
+function buildQuery(text){
+  let t = text.trim();
+  const parts = [];
+  const m = t.match(/([A-Za-z]{0,2}\d{1,3})\s*\/\s*([A-Za-z]{0,2}\d{1,3})/);
+  if (m) {
+    t = t.replace(m[0], " ");
+    const num = /^\d+$/.test(m[1]) ? String(parseInt(m[1],10)) : m[1].toUpperCase();
+    parts.push("number:" + num);
+    if (/^\d+$/.test(m[2])) parts.push("set.printedTotal:" + parseInt(m[2],10));
+  } else {
+    const n = t.match(/(?:^|\s)#?(\d{1,3})$/);
+    if (n && t.replace(n[0],"").trim()) { parts.push("number:" + parseInt(n[1],10)); t = t.replace(n[0], " "); }
+  }
+  const words = t.toLowerCase().replace(/[^a-z0-9éè'\-\s]/g," ").split(/\s+/).filter(Boolean);
+  words.forEach(w => parts.push("name:" + w + "*"));
+  return parts.join(" ");
+}
+
+async function searchCards(text){
+  const q = buildQuery(text);
+  if (!q) return [];
+  const data = await apiGet({ q, pageSize: 40, orderBy: "-set.releaseDate" });
+  return data.data.map(toCard);
+}
+
+/* ---------- opslag: Firebase of lokaal ---------- */
+const store = {
+  cards: {}, // id -> card
+  mode: "local",
+  db: null,
+  async init(){
+    if (FIREBASE_CONFIG && FIREBASE_CONFIG.projectId) {
+      try {
+        await loadScript("https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js");
+        await loadScript("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js");
+        firebase.initializeApp(FIREBASE_CONFIG);
+        this.db = firebase.firestore();
+        const snap = await this.db.collection(FIRESTORE_COLLECTION).get();
+        snap.forEach(d => this.cards[d.id] = d.data());
+        this.mode = "firebase";
+        return;
+      } catch (e) { console.warn("Firebase niet beschikbaar, val terug op lokaal", e); }
+    }
+    try { this.cards = JSON.parse(localStorage.getItem("pkmCards") || "{}"); } catch { this.cards = {}; }
+  },
+  async put(card){
+    this.cards[card.id] = card;
+    if (this.mode === "firebase") await this.db.collection(FIRESTORE_COLLECTION).doc(card.id).set(card);
+    else try { localStorage.setItem("pkmCards", JSON.stringify(this.cards)); } catch {}
+  },
+  async remove(id){
+    delete this.cards[id];
+    if (this.mode === "firebase") await this.db.collection(FIRESTORE_COLLECTION).doc(id).delete();
+    else try { localStorage.setItem("pkmCards", JSON.stringify(this.cards)); } catch {}
+  }
+};
+function loadScript(src){ return new Promise((ok, fail) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = fail; document.head.appendChild(s); }); }
+
+/* ---------- render ---------- */
+let lastResults = [];
+function cardTile(c){
+  const saved = store.cards[c.id];
+  const fav = saved?.fav;
+  return `<div class="card" data-id="${esc(c.id)}">
+    <img loading="lazy" src="${esc(c.imgSmall)}" alt="${esc(c.name)}">
+    ${saved ? `<button class="fav ${fav ? "on" : ""}" data-fav="${esc(c.id)}" aria-label="Favoriet">${STAR}</button>` : ""}
+    <div class="meta">
+      <div class="name">${esc(c.name)} <span style="color:var(--muted);font-weight:400">#${esc(c.number)}/${esc(c.printedTotal)}</span></div>
+      <div class="sub">${esc(c.setName)}</div>
+      <div class="price">${eur(c.eur)}<small>${usd(c.usd)}</small></div>
+    </div>
+  </div>`;
+}
+function renderResults(){
+  $("#results").innerHTML = lastResults.map(cardTile).join("");
+}
+
+const filters = { fav:false, min:null, max:null, sort:"valDesc" };
+function renderSaved(){
+  let list = Object.values(store.cards);
+  const term = $("#q").value.trim().toLowerCase();
+  if (term) list = list.filter(c => (c.name + " " + c.setName + " " + c.number).toLowerCase().includes(term));
+  if (filters.fav) list = list.filter(c => c.fav);
+  if (filters.min != null) list = list.filter(c => (c.eur ?? 0) >= filters.min);
+  if (filters.max != null) list = list.filter(c => (c.eur ?? 0) <= filters.max);
+  const s = filters.sort;
+  list.sort((a,b) =>
+    s === "valAsc" ? (a.eur??0)-(b.eur??0) :
+    s === "name"   ? a.name.localeCompare(b.name) :
+    s === "set"    ? (a.setName||"").localeCompare(b.setName||"") || parseInt(a.number)-parseInt(b.number) :
+    s === "recent" ? (b.savedAt||0)-(a.savedAt||0) :
+                     (b.eur??0)-(a.eur??0));
+  const total = list.reduce((t,c) => t + (c.eur || 0), 0);
+  $("#summary").innerHTML = list.length
+    ? `<b>${list.length}</b> kaart${list.length === 1 ? "" : "en"} · totaal <b>${eur(total)}</b>${store.mode === "firebase" ? " · ☁︎ Firebase" : " · op deze telefoon"}`
+    : "";
+  $("#saved").innerHTML = list.length ? list.map(cardTile).join("")
+    : `<div class="empty">${Object.keys(store.cards).length ? "Geen kaarten die aan je filters voldoen." : "Nog niets opgeslagen. Open een kaart bij Zoeken om hem op te slaan."}</div>`;
+}
+
+/* ---------- detail ---------- */
+async function openDetail(id){
+  let c = store.cards[id] || lastResults.find(x => x.id === id);
+  if (!c) return;
+  // Elke geopende kaart wordt automatisch opgeslagen
+  if (!store.cards[id]) { c = { ...c, fav:false, savedAt:Date.now(), refreshedAt:Date.now() }; await store.put(c); renderResults(); }
+  showDetail(store.cards[id]);
+}
+function showDetail(c){
+  $("#detail").innerHTML = `
+    <img class="detail-img" src="${esc(c.imgLarge || c.imgSmall)}" alt="${esc(c.name)}">
+    <h2>${esc(c.name)} · ${esc(c.number)}/${esc(c.printedTotal)}</h2>
+    <div class="set">${esc(c.setName)}${c.rarity ? " · " + esc(c.rarity) : ""}${c.releaseDate ? " · " + esc(c.releaseDate.slice(0,4)) : ""}</div>
+    <div class="prices">
+      <div class="pbox">
+        <div class="lbl">Cardmarket (ongegradeerd)</div>
+        <div class="val">${eur(c.eur)}</div>
+        <div class="upd">Prijsdatum: ${fmtDate(c.eurUpdated)}</div>
+        ${c.cmUrl ? `<a href="${esc(c.cmUrl)}" target="_blank" rel="noopener">Bekijk op Cardmarket ↗</a>` : ""}
+      </div>
+      <div class="pbox">
+        <div class="lbl">TCGplayer (ongegradeerd)</div>
+        <div class="val">${usd(c.usd)}</div>
+        <div class="upd">Prijsdatum: ${fmtDate(c.usdUpdated)}</div>
+        ${c.tcgUrl ? `<a href="${esc(c.tcgUrl)}" target="_blank" rel="noopener">Bekijk op TCGplayer ↗</a>` : ""}
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn ${c.fav ? "star-on" : ""}" id="dFav">${STAR}${c.fav ? "Favoriet" : "Maak favoriet"}</button>
+      <button class="btn" id="dRefresh"><svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>Vernieuw</button>
+      <button class="btn danger" id="dDel">Verwijder</button>
+    </div>
+    <div class="note">Opgeslagen ${fmtDate(new Date(c.savedAt).toISOString())} · laatst vernieuwd ${fmtDate(new Date(c.refreshedAt || c.savedAt).toISOString())}</div>`;
+  $("#dFav").onclick = async () => { await store.put({ ...c, fav: !c.fav }); showDetail(store.cards[c.id]); rerender(); };
+  $("#dRefresh").onclick = async e => {
+    e.currentTarget.innerHTML = '<span class="spinner"></span>Bezig…';
+    try { await refreshCard(c.id); showDetail(store.cards[c.id]); rerender(); }
+    catch (err) { e.currentTarget.textContent = "Mislukt, probeer opnieuw"; }
+  };
+  $("#dDel").onclick = async () => { await store.remove(c.id); closeSheet(); rerender(); };
+  $("#sheetBg").style.display = "block";
+  requestAnimationFrame(() => $("#sheet").classList.add("open"));
+}
+function closeSheet(){ $("#sheet").classList.remove("open"); $("#sheetBg").style.display = "none"; }
+$("#sheetBg").onclick = closeSheet;
+
+async function refreshCard(id){
+  const data = await apiGet({ q: `id:${id}` });
+  if (!data.data[0]) throw new Error("niet gevonden");
+  const fresh = toCard(data.data[0]);
+  const old = store.cards[id] || {};
+  await store.put({ ...fresh, fav: !!old.fav, savedAt: old.savedAt || Date.now(), refreshedAt: Date.now() });
+}
+
+/* ---------- zoeken ---------- */
+let currentTab = "search";
+function rerender(){ currentTab === "search" ? renderResults() : renderSaved(); }
+
+async function doSearch(text){
+  const st = $("#searchStatus");
+  if (!text.trim()) return;
+  st.className = "status"; st.innerHTML = '<span class="spinner"></span>Zoeken…';
+  try {
+    lastResults = await searchCards(text);
+    st.textContent = lastResults.length ? `${lastResults.length} kaart${lastResults.length === 1 ? "" : "en"} gevonden. Tik op een kaart om hem op te slaan.` : "Niets gevonden. Probeer alleen de naam, of naam + nummer (bijv. Pikachu 25/165).";
+    renderResults();
+  } catch (e) {
+    st.className = "status err"; st.textContent = "Zoeken mislukt: " + e.message;
+  }
+}
+$("#searchForm").onsubmit = e => {
+  e.preventDefault(); $("#q").blur();
+  if (currentTab === "saved") return renderSaved();
+  doSearch($("#q").value);
+};
+$("#q").addEventListener("input", () => { if (currentTab === "saved") renderSaved(); });
+
+/* ---------- camera + OCR ---------- */
+let tesseractReady = null;
+$("#camBtn").onclick = () => $("#camInput").click();
+$("#camInput").onchange = async e => {
+  const file = e.target.files[0]; e.target.value = "";
+  if (!file) return;
+  switchTab("search");
+  const st = $("#searchStatus");
+  st.className = "status"; st.innerHTML = '<span class="spinner"></span>Foto lezen…';
+  try {
+    tesseractReady ??= loadScript("https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js");
+    await tesseractReady;
+    const img = await prepImage(file);
+    const { data } = await Tesseract.recognize(img, "eng");
+    await searchFromOcr(data.text || "");
+  } catch (err) {
+    st.className = "status err"; st.textContent = "Foto lezen mislukt. Probeer opnieuw met meer licht, of typ de naam.";
+  }
+};
+/* verklein + grijswaarden + contrast: beter voor OCR */
+async function prepImage(file){
+  const bmp = await createImageBitmap(file);
+  const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+  const cv = document.createElement("canvas");
+  cv.width = Math.round(bmp.width * scale); cv.height = Math.round(bmp.height * scale);
+  const ctx = cv.getContext("2d"); ctx.drawImage(bmp, 0, 0, cv.width, cv.height);
+  const id = ctx.getImageData(0, 0, cv.width, cv.height), d = id.data;
+  for (let i = 0; i < d.length; i += 4) {
+    let g = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
+    g = Math.max(0, Math.min(255, (g - 128) * 1.4 + 128));
+    d[i] = d[i+1] = d[i+2] = g;
+  }
+  ctx.putImageData(id, 0, 0);
+  return cv;
+}
+async function searchFromOcr(text){
+  const st = $("#searchStatus");
+  const clean = text.replace(/[|]/g, "/");
+  const m = clean.match(/([A-Z]{0,2}\d{1,3})\s*\/\s*([A-Z]{0,2}\d{1,3})/i);
+  // naamkandidaten: woorden van 3+ letters uit de bovenste regels
+  const lines = clean.split("\n").map(l => l.trim()).filter(Boolean);
+  const words = lines.slice(0, 6).join(" ").match(/[A-Za-zé]{3,}/g) || [];
+  const skip = new Set(["basic","stage","evolves","from","pokemon","pokémon","trainer","item","supporter","energy","ability","weakness","resistance","retreat"]);
+  const nameWords = words.filter(w => !skip.has(w.toLowerCase()));
+
+  if (m) {
+    const numQ = `${m[1]}/${m[2]}`;
+    $("#q").value = numQ;
+    await doSearch(numQ);
+    // meerdere treffers? Filter op naam uit de foto
+    if (lastResults.length > 1 && nameWords.length) {
+      const hit = lastResults.filter(c => nameWords.some(w => c.name.toLowerCase().includes(w.toLowerCase())));
+      if (hit.length) { lastResults = hit; renderResults(); }
+    }
+    if (lastResults.length === 1) { st.textContent = `Gevonden via kaartnummer ${numQ}.`; return openDetail(lastResults[0].id); }
+    if (lastResults.length) return;
+  }
+  for (const w of nameWords.slice(0, 3)) {
+    $("#q").value = w;
+    await doSearch(w);
+    if (lastResults.length) { st.textContent = `Gezocht op "${w}" uit de foto. Kies de juiste kaart, of zoek op naam + nummer.`; return; }
+  }
+  st.className = "status err";
+  st.textContent = "Kaart niet herkend. Fotografeer de hele kaart recht van boven, of typ naam + nummer (linksonder op de kaart).";
+}
+
+/* ---------- tabs, filters, events ---------- */
+function switchTab(tab){
+  currentTab = tab;
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
+  $("#tab-search").classList.toggle("hidden", tab !== "search");
+  $("#tab-saved").classList.toggle("hidden", tab !== "saved");
+  $("#q").placeholder = tab === "search" ? "Naam of nummer, bijv. Pikachu 25/165" : "Zoek in opgeslagen kaarten of sets";
+  $("#q").value = "";
+  rerender();
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => switchTab(b.dataset.tab));
+
+document.addEventListener("click", async e => {
+  const favBtn = e.target.closest("[data-fav]");
+  if (favBtn) {
+    e.stopPropagation();
+    const c = store.cards[favBtn.dataset.fav];
+    if (c) { await store.put({ ...c, fav: !c.fav }); rerender(); }
+    return;
+  }
+  const tile = e.target.closest(".card[data-id]");
+  if (tile) openDetail(tile.dataset.id);
+});
+
+$("#favChip").onclick = () => { filters.fav = !filters.fav; $("#favChip").classList.toggle("on", filters.fav); renderSaved(); };
+$("#minVal").oninput = e => { filters.min = e.target.value === "" ? null : parseFloat(e.target.value); renderSaved(); };
+$("#maxVal").oninput = e => { filters.max = e.target.value === "" ? null : parseFloat(e.target.value); renderSaved(); };
+$("#sortSel").onchange = e => { filters.sort = e.target.value; renderSaved(); };
+$("#refreshAll").onclick = async () => {
+  const btn = $("#refreshAll"), ids = Object.keys(store.cards);
+  if (!ids.length) return;
+  for (let i = 0; i < ids.length; i++) {
+    btn.innerHTML = `<span class="spinner"></span>${i + 1}/${ids.length}`;
+    try { await refreshCard(ids[i]); } catch {}
+    await sleep(PTCG_API_KEY ? 150 : 2100); // binnen de limiet blijven
+  }
+  btn.textContent = "↻ Alles vernieuwen";
+  renderSaved();
+};
+
+/* ---------- start ---------- */
+store.init().then(rerender);
+</script>
+</body>
+</html>
