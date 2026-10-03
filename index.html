@@ -165,11 +165,25 @@ const STAR = '<svg viewBox="0 0 24 24"><path d="M12 17.27 18.18 21l-1.64-7.03L22
 
 /* ---------- pokemontcg.io ---------- */
 const API = "https://api.pokemontcg.io/v2/cards";
-async function apiGet(params){
-  const url = API + "?" + new URLSearchParams(params);
+const SELECT = "id,name,number,set,rarity,images,cardmarket,tcgplayer";
+async function apiGetOnce(params){
+  const url = API + "?" + new URLSearchParams({ select: SELECT, ...params });
   const res = await fetch(url, { headers: PTCG_API_KEY ? {"X-Api-Key": PTCG_API_KEY} : {} });
-  if(!res.ok) throw new Error("API-fout " + res.status);
+  if(!res.ok) { const e = new Error("API-fout " + res.status); e.status = res.status; throw e; }
   return res.json();
+}
+/* De API geeft soms tijdelijk 500/502/504: tot 3 keer opnieuw proberen */
+async function apiGet(params, tries = 3){
+  let last;
+  for (let i = 0; i < tries; i++) {
+    try { return await apiGetOnce(params); }
+    catch (e) {
+      last = e;
+      if (e.status && e.status < 500 && e.status !== 429) throw e; // echte fout: niet herhalen
+      await sleep(1200 * (i + 1));
+    }
+  }
+  throw last;
 }
 
 /* Zet een API-kaart om naar ons eigen, compacte formaat */
@@ -220,8 +234,17 @@ function buildQuery(text){
 async function searchCards(text){
   const q = buildQuery(text);
   if (!q) return [];
-  const data = await apiGet({ q, pageSize: 40, orderBy: "-set.releaseDate" });
-  return data.data.map(toCard);
+  let data;
+  try {
+    data = await apiGet({ q, pageSize: 30 });
+  } catch (e) {
+    // Lichtere variant: exacte naam i.p.v. wildcard (minder zwaar voor de server)
+    const exact = q.replace(/name:([^\s*]+)\*/g, "name:$1");
+    if (exact === q) throw e;
+    data = await apiGet({ q: exact, pageSize: 20 }, 2);
+  }
+  // nieuwste sets eerst (sorteren in de browser i.p.v. op de server)
+  return data.data.map(toCard).sort((a,b) => (b.releaseDate||"").localeCompare(a.releaseDate||""));
 }
 
 /* ---------- opslag: Firebase of lokaal ---------- */
@@ -366,7 +389,10 @@ async function doSearch(text){
     st.textContent = lastResults.length ? `${lastResults.length} kaart${lastResults.length === 1 ? "" : "en"} gevonden. Tik op een kaart om hem op te slaan.` : "Niets gevonden. Probeer alleen de naam, of naam + nummer (bijv. Pikachu 25/165).";
     renderResults();
   } catch (e) {
-    st.className = "status err"; st.textContent = "Zoeken mislukt: " + e.message;
+    st.className = "status err";
+    st.textContent = e.status >= 500
+      ? "De kaartendatabase is even overbelast. Probeer het over een minuutje opnieuw."
+      : "Zoeken mislukt: " + e.message;
   }
 }
 $("#searchForm").onsubmit = e => {
